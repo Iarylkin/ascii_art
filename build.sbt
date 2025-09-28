@@ -1,4 +1,4 @@
-name := "Table Processor"
+name := "Semestral Project"
 
 version := "1.0.0"
 
