@@ -10,6 +10,10 @@ test:
   stage: test
   script:
     - sbt clean coverage test coverageReport
+  coverage: /Coverage was stmt=\[(\d*\.?\d*\%)\]/
   artifacts:
+    when: always
     paths:
       - target/scala-*/scoverage-*
+    reports:
+      junit: target/test-reports/*.xml
