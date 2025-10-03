@@ -14,3 +14,38 @@ The idea of this project is to load images, translate them into ASCII ART images
 
 [Course Page with assignment](https://courses.fit.cvut.cz/BI-OOP/projects/ASCII-art.html)
 
+## Project Structure
+
+`project/build.properties`  
+Specifies the SBT version
+
+`project/plugin.sbt`  
+Defines the SBT plugins, in our case:
+- Test coverage (`sbt-coverage`)
+- Linter (`Wartremover`)
+- A JAR assembler (`sbt-assembly`, used in testing)
+- A formatter (`Scalafmt`)
+
+`build.sbt`  
+Configuration file defining project setting, dependencies and build instructions.
+
+`.gitignore`  
+Tells git which files to ignore
+
+`.gitlab-ci.yml`  
+Defines the pipeline for GitLab (see [here](https://courses.fit.cvut.cz/BI-OOP/projects/index.html#gitlab-pipeline))
+
+`.scalafmt.conf`  
+This defines a style for the formatter, unifying the style of all source files  
+This can be invoked with:
+- `sbt scalafmtAll`
+- the command `scalafmtAll` inside of the SBT shell
+- or directly inside of [IntelliJ IDEA](https://scalameta.org/scalafmt/docs/installation.html#intellij)
+
+
+`src/main/scala`  
+The Scala source files
+
+`src/test/scala`  
+The Scala tests
+
