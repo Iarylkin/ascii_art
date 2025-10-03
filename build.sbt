@@ -12,7 +12,6 @@ wartremoverWarnings ++= Seq(
   Wart.AsInstanceOf,
   Wart.EitherProjectionPartial,
   Wart.IsInstanceOf,
-  Wart.IterableOps,
   Wart.Null,
   Wart.OptionPartial,
   Wart.PublicInference,
