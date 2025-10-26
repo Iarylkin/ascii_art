@@ -103,7 +103,8 @@ object ImageReaderRegistry {
   def default: ImageReaderRegistry =
     new ImageReaderRegistry(Vector(
       new PngReader,
-      new JpegReader
+      new JpegReader,
+      new GifReader
     ))
 }
 
