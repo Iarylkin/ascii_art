@@ -11,7 +11,7 @@ import javax.imageio.ImageIO
 
   val converter = new AsciiConverter(LinearTable())
   val asciiArt = converter.convert(imageData)
-  val saver = new FileSaver("ascii_art.txt")
+  val saver = new FileSaver("src/main/resources/asciiArt.txt")
   saver.save(asciiArt)
 }
 
@@ -97,8 +97,7 @@ object ImageReaderRegistry {
   def default: ImageReaderRegistry =
     new ImageReaderRegistry(Vector(
       new PngReader,
-      new JpegReader,
-      new GifReader
+      new JpegReader
     ))
 }
 
@@ -149,10 +148,10 @@ trait AsciiTable {
 }
 
 class LinearTable extends AsciiTable {
-  val chars = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'. "
+  val chars = " .:-=+*#%@"
   override def map(gray: Double): Char = {
-    val norm = gray / 255
-    val index = ((chars.length - 1) - norm * (chars.length - 1)).toInt
+    val step = 256.0 / chars.length
+    val index = Math.min((gray / step).toInt, chars.length - 1)
     chars.charAt(index)
   }
 }
