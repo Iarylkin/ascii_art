@@ -1,23 +1,35 @@
 package Main
 
 import java.awt.image.BufferedImage
-import java.io.File
+import java.io.{File, PrintWriter}
 import javax.imageio.ImageIO
 
 @main def main: Unit = {
-  val path = "src/main/resources/image1.jpeg"
+  val path = "src/main/resources/linux.jpg"
   val imageSource = new FileImageSource(path)
   val imageData = imageSource.load()
+
+  val converter = new AsciiConverter(LinearTable())
+  val asciiArt = converter.convert(imageData)
+  val saver = new FileSaver("src/main/resources/asciiArt.txt")
+  saver.save(asciiArt)
 }
 
 case class Pixel(r: Int, g: Int, b: Int) {
 }
 
-case class ImageData(
+
+case class ImageData (
   width: Int,
   height: Int,
   pixels: Array[Pixel],
   format: String
+)
+
+case class AsciiImageData(
+  width: Int,
+  height: Int,
+  pixels: String,
 )
 
 object ImageData {
@@ -85,8 +97,7 @@ object ImageReaderRegistry {
   def default: ImageReaderRegistry =
     new ImageReaderRegistry(Vector(
       new PngReader,
-      new JpegReader,
-      new GifReader
+      new JpegReader
     ))
 }
 
@@ -110,3 +121,82 @@ abstract class BufferedImageReader(val name: String, val extensions: Set[String]
 class PngReader extends BufferedImageReader("png", Set("png"))
 class JpegReader extends BufferedImageReader("jpeg", Set("jpg", "jpeg"))
 class GifReader extends BufferedImageReader("gif", Set("gif"))
+
+class AsciiConverter(table: AsciiTable) {
+  def convert(imageData: ImageData) : AsciiImageData = {
+    val sb = new StringBuilder
+    val pixels = imageData.pixels
+    for(y <- 0 until imageData.height) {
+      for(x <- 0 until imageData.width) {
+        val index = y * imageData.width + x
+        val pixel = pixels(index)
+        val greyscalePixel = toGreyscale(pixel.r, pixel.g, pixel.b)
+        val asciiPixel = table.map(greyscalePixel)
+        sb.append(asciiPixel)
+      }
+    }
+    AsciiImageData(imageData.width, imageData.height, sb.toString())
+  }
+
+  private def toGreyscale(r: Int, g: Int, b: Int): Double = {
+    0.3 * r + 0.59 * g + 0.11 * b
+  }
+}
+
+trait AsciiTable {
+  def map(gray: Double): Char
+}
+
+class LinearTable extends AsciiTable {
+  val chars = " .:-=+*#%@"
+  override def map(gray: Double): Char = {
+    val step = 256.0 / chars.length
+    val index = Math.min((gray / step).toInt, chars.length - 1)
+    chars.charAt(index)
+  }
+}
+
+trait Saver {
+  def save(data: AsciiImageData): Unit
+}
+
+abstract class AbstractSaver extends Saver {
+
+  protected def open(): Unit = {}
+
+  protected def writeChar(c: Char): Unit
+
+  protected def writeNewLine(): Unit
+
+  protected def close(): Unit = {}
+
+  final override def save(data: AsciiImageData): Unit = {
+    open()
+    try {
+      for (i <- 0 until data.pixels.length) {
+        writeChar(data.pixels(i))
+        if ((i + 1) % data.width == 0)
+          writeNewLine()
+      }
+    } finally {
+      close()
+    }
+  }
+}
+
+class ConsoleSaver extends AbstractSaver {
+  override protected def writeChar(c: Char): Unit = print(c)
+  override protected def writeNewLine(): Unit = println()
+}
+
+class FileSaver(path: String) extends AbstractSaver {
+  private var writer: PrintWriter = _
+
+  override protected def open(): Unit = {
+    writer = new PrintWriter(new File(path))
+  }
+
+  override protected def writeChar(c: Char): Unit = writer.print(c)
+  override protected def writeNewLine(): Unit = writer.println()
+  override protected def close(): Unit = writer.close()
+}
