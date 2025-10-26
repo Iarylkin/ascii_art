@@ -7,10 +7,15 @@ import scala.util.Random
 
 @main def main: Unit = {
   val path = "src/main/resources/linux.jpg"
-  val imageSource = new RandomImageSource()
+
+  val imageSource = new FileImageSource(path)
   val imageData = imageSource.load()
 
-  val converter = new AsciiConverter(LinearTable())
+
+  val longBorke = " .'`^\",:;Il!i><~+_-?][]{}1()|\\//tfrxnuvczyXUJCLQ0OZmwpqdbkhao*#MW&8%B@$"
+  val customCharsTable = " 0"
+
+  val converter = new AsciiConverter(LinearTable(customCharsTable))
   val asciiArt = converter.convert(imageData)
   val saver = new FileSaver("src/main/resources/asciiArt.txt")
   saver.save(asciiArt)
@@ -170,12 +175,11 @@ trait AsciiTable {
   def map(gray: Double): Char
 }
 
-class LinearTable extends AsciiTable {
-  val chars = " .:-=+*#%@"
+class LinearTable(val charsTable: String = " .:-=+*#%@") extends AsciiTable {
   override def map(gray: Double): Char = {
-    val step = 256.0 / chars.length
-    val index = Math.min((gray / step).toInt, chars.length - 1)
-    chars.charAt(index)
+    val step = 256.0 / charsTable.length
+    val index = Math.min((gray / step).toInt, charsTable.length - 1)
+    charsTable.charAt(index)
   }
 }
 
