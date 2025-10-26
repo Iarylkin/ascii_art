@@ -5,9 +5,18 @@ import java.io.File
 import javax.imageio.ImageIO
 
 @main def main: Unit = {
-  val path = "src/main/resources/image1.jpeg"
+  val path = "src/main/resources/smile.jpg"
   val imageSource = new FileImageSource(path)
   val imageData = imageSource.load()
+
+  val converter = new AsciiConverter(LinearTable())
+  val asciiArt = converter.convert(imageData)
+  for(i <- 0 until asciiArt.length) {
+    print(asciiArt(i))
+    if ((i + 1) % imageData.width == 0) {
+      println()
+    }
+  }
 }
 
 case class Pixel(r: Int, g: Int, b: Int) {
@@ -110,3 +119,37 @@ abstract class BufferedImageReader(val name: String, val extensions: Set[String]
 class PngReader extends BufferedImageReader("png", Set("png"))
 class JpegReader extends BufferedImageReader("jpeg", Set("jpg", "jpeg"))
 class GifReader extends BufferedImageReader("gif", Set("gif"))
+
+class AsciiConverter(table: AsciiTable) {
+  def convert(imageData: ImageData) : String = {
+    val sb = new StringBuilder
+    val pixels = imageData.pixels
+    for(y <- 0 until imageData.height) {
+      for(x <- 0 until imageData.width) {
+        val index = y * imageData.width + x
+        val pixel = pixels(index)
+        val greyscalePixel = toGreyscale(pixel.r, pixel.g, pixel.b)
+        val asciiPixel = table.map(greyscalePixel)
+        sb.append(asciiPixel)
+      }
+    }
+    sb.toString()
+  }
+
+  private def toGreyscale(r: Int, g: Int, b: Int): Double = {
+    0.3 * r + 0.59 * g + 0.11 * b
+  }
+}
+
+trait AsciiTable {
+  def map(gray: Double): Char
+}
+
+class LinearTable extends AsciiTable {
+  val chars = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'. "
+  override def map(gray: Double): Char = {
+    val norm = gray / 255
+    val index = ((chars.length - 1) - norm * (chars.length - 1)).toInt
+    chars.charAt(index)
+  }
+}
