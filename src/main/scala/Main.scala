@@ -3,10 +3,11 @@ package Main
 import java.awt.image.BufferedImage
 import java.io.{File, PrintWriter}
 import javax.imageio.ImageIO
+import scala.util.Random
 
 @main def main: Unit = {
   val path = "src/main/resources/linux.jpg"
-  val imageSource = new FileImageSource(path)
+  val imageSource = new RandomImageSource()
   val imageData = imageSource.load()
 
   val converter = new AsciiConverter(LinearTable())
@@ -115,6 +116,28 @@ abstract class BufferedImageReader(val name: String, val extensions: Set[String]
     if (img == null)
       throw new IllegalArgumentException(s"Cannot read $name image: ${file.getPath}")
     ImageData.fromBufferedImage(img, name)
+  }
+}
+
+class RandomImageSource(seed: Option[Long] = None) extends ImageSource {
+  override def load(): ImageData = {
+    val rng = seed match {
+      case Some(s) => new Random(s)
+      case None => new Random()
+    }
+    val width = 20 + rng.nextInt(181)
+    val height = 20 + rng.nextInt(181)
+
+    val pixels = Array.ofDim[Pixel](width * height)
+
+    for (i <- pixels.indices) {
+      val r = rng.nextInt(256)
+      val g = rng.nextInt(256)
+      val b = rng.nextInt(256)
+      pixels(i) = Pixel(r, g, b)
+    }
+
+    ImageData(width, height, pixels, "random")
   }
 }
 
