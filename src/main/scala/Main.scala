@@ -15,9 +15,9 @@ import scala.util.Random
   val longBorke = " .'`^\",:;Il!i><~+_-?][]{}1()|\\//tfrxnuvczyXUJCLQ0OZmwpqdbkhao*#MW&8%B@$"
   val customCharsTable = " 0"
 
-  val converter = new AsciiConverter(LinearTable(customCharsTable))
+  val converter = new AsciiConverter(GammaTable(2.2))
   val asciiArt = converter.convert(imageData)
-  val saver = new FileSaver("src/main/resources/asciiArt.txt")
+  val saver = new FileSaver("src/main/resources/asciiArt2.txt")
   saver.save(asciiArt)
 }
 
@@ -183,6 +183,18 @@ class LinearTable(val charsTable: String = " .:-=+*#%@") extends AsciiTable {
     charsTable.charAt(index)
   }
 }
+
+class GammaTable(val gamma: Double = 1.8) extends AsciiTable {
+  val charsTable = " .:-=+*#%@"
+
+  override def map(gray: Double): Char = {
+    val normalized = gray / 255.0
+    val corrected = Math.pow(normalized, gamma)
+    val index = (corrected * charsTable.length).toInt
+    charsTable(Math.min(index, charsTable.length - 1))
+  }
+}
+
 
 trait Saver {
   def save(data: AsciiImageData): Unit
