@@ -9,14 +9,16 @@ import scala.util.Random
   val path = "src/main/resources/linux.jpg"
 
   val imageSource = new FileImageSource(path)
-  val imageData = imageSource.load()
+  val rgbImageData = imageSource.load()
 
 
   val longBorke = " .'`^\",:;Il!i><~+_-?][]{}1()|\\//tfrxnuvczyXUJCLQ0OZmwpqdbkhao*#MW&8%B@$"
   val customCharsTable = " 0"
 
-  val converter = new AsciiConverter(GammaTable(2.2))
-  val asciiArt = converter.convert(imageData)
+  val grayScaleConverter = new GrayScaleConverter()
+  val grayScaleImageData = grayScaleConverter.convert(rgbImageData)
+  val asciiConverter = new AsciiConverter(GammaTable(2.2))
+  val asciiArt = asciiConverter.convert(grayScaleImageData)
   val saver = new FileSaver("src/main/resources/asciiArt2.txt")
   saver.save(asciiArt)
 }
@@ -24,41 +26,27 @@ import scala.util.Random
 case class Pixel(r: Int, g: Int, b: Int) {
 }
 
+abstract class ImageData(val width: Int, val height: Int)
 
-case class ImageData (
-  width: Int,
-  height: Int,
-  pixels: Array[Pixel],
-  format: String
-)
+case class RgbImageData(
+                         override val width: Int,
+                         override val height: Int,
+                         pixels: Array[Pixel],
+                         format: String
+                       ) extends ImageData(width, height)
+
+case class GrayscaleImageData(
+                               override val width: Int,
+                               override val height: Int,
+                               pixels: Array[Double]
+                             ) extends ImageData(width, height)
 
 case class AsciiImageData(
-  width: Int,
-  height: Int,
-  pixels: String,
-)
+                           override val width: Int,
+                           override val height: Int,
+                           pixels: String
+                         ) extends ImageData(width, height)
 
-object ImageData {
-  def fromBufferedImage(img: BufferedImage, format: String): ImageData = {
-    val w = img.getWidth
-    val h = img.getHeight
-    val pixels = Array.ofDim[Pixel](w * h)
-
-    for (y <- 0 until h; x <- 0 until w) {
-      val argb = img.getRGB(x, y)
-      pixels(y * w + x) = fromARGB(argb)
-    }
-
-    ImageData(w, h, pixels, format)
-  }
-
-  private def fromARGB(argb: Int): Pixel =
-    Pixel(
-      (argb >> 16) & 0xFF,
-      (argb >> 8) & 0xFF,
-      argb & 0xFF
-    )
-}
 
 trait ImageSource {
   def load() : ImageData
@@ -66,7 +54,7 @@ trait ImageSource {
 
 class FileImageSource(private val path: String) extends ImageSource {
 
-  override def load(): ImageData = {
+  override def load(): RgbImageData = {
     val file = new File(path)
     if (!file.exists())
       throw new IllegalArgumentException(s"File not found: ${file.getPath}")
@@ -111,22 +99,42 @@ object ImageReaderRegistry {
 trait ImageReader {
   def name: String
   def extensions: Set[String]
-  def read(file: File): ImageData
+  def read(file: File): RgbImageData
 }
 
 abstract class BufferedImageReader(val name: String, val extensions: Set[String])
   extends ImageReader {
 
-  override def read(file: File): ImageData = {
+  override def read(file: File): RgbImageData = {
     val img = ImageIO.read(file)
     if (img == null)
       throw new IllegalArgumentException(s"Cannot read $name image: ${file.getPath}")
-    ImageData.fromBufferedImage(img, name)
+    fromBufferedImage(img, name)
   }
+
+  protected def fromBufferedImage(img: BufferedImage, format: String): RgbImageData = {
+    val w = img.getWidth
+    val h = img.getHeight
+    val pixels = Array.ofDim[Pixel](w * h)
+
+    for (y <- 0 until h; x <- 0 until w) {
+      val argb = img.getRGB(x, y)
+      pixels(y * w + x) = fromARGB(argb)
+    }
+
+    RgbImageData(w, h, pixels, format)
+  }
+
+  protected def fromARGB(argb: Int): Pixel =
+    Pixel(
+      (argb >> 16) & 0xFF,
+      (argb >> 8) & 0xFF,
+      argb & 0xFF
+    )
 }
 
 class RandomImageSource(seed: Option[Long] = None) extends ImageSource {
-  override def load(): ImageData = {
+  override def load(): RgbImageData = {
     val rng = seed match {
       case Some(s) => new Random(s)
       case None => new Random()
@@ -143,7 +151,7 @@ class RandomImageSource(seed: Option[Long] = None) extends ImageSource {
       pixels(i) = Pixel(r, g, b)
     }
 
-    ImageData(width, height, pixels, "random")
+    RgbImageData(width, height, pixels, "random")
   }
 }
 
@@ -151,24 +159,36 @@ class PngReader extends BufferedImageReader("png", Set("png"))
 class JpegReader extends BufferedImageReader("jpeg", Set("jpg", "jpeg"))
 class GifReader extends BufferedImageReader("gif", Set("gif"))
 
-class AsciiConverter(table: AsciiTable) {
-  def convert(imageData: ImageData) : AsciiImageData = {
+trait ImageFilter() {
+  def apply(imageData: ImageData): ImageData
+}
+
+trait Converter[I <: ImageData, O <: ImageData] {
+  def convert(input: I): O
+}
+
+class GrayScaleConverter extends Converter[RgbImageData, GrayscaleImageData] {
+
+  override def convert(input: RgbImageData): GrayscaleImageData = {
+    val pixels = input.pixels.map { pixel =>
+      0.3 * pixel.r + 0.59 * pixel.g + 0.11 * pixel.b
+    }
+    GrayscaleImageData(input.width, input.height, pixels)
+  }
+}
+
+class AsciiConverter(table: AsciiTable) extends Converter[GrayscaleImageData, AsciiImageData] {
+
+  override def convert(input: GrayscaleImageData): AsciiImageData = {
     val sb = new StringBuilder
-    val pixels = imageData.pixels
-    for(y <- 0 until imageData.height) {
-      for(x <- 0 until imageData.width) {
-        val index = y * imageData.width + x
-        val pixel = pixels(index)
-        val greyscalePixel = toGreyscale(pixel.r, pixel.g, pixel.b)
-        val asciiPixel = table.map(greyscalePixel)
-        sb.append(asciiPixel)
+    for (y <- 0 until input.height) {
+      for (x <- 0 until input.width) {
+        val gray = input.pixels(y * input.width + x)
+        val asciiChar = table.map(gray)
+        sb.append(asciiChar)
       }
     }
-    AsciiImageData(imageData.width, imageData.height, sb.toString())
-  }
-
-  private def toGreyscale(r: Int, g: Int, b: Int): Double = {
-    0.3 * r + 0.59 * g + 0.11 * b
+    AsciiImageData(input.width, input.height, sb.toString())
   }
 }
 
