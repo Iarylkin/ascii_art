@@ -9,56 +9,49 @@ import scala.util.Random
   val path = "src/main/resources/linux.jpg"
 
   val imageSource = new FileImageSource(path)
-  val imageData = imageSource.load()
+  val rgbImageData = imageSource.load()
 
 
   val longBorke = " .'`^\",:;Il!i><~+_-?][]{}1()|\\//tfrxnuvczyXUJCLQ0OZmwpqdbkhao*#MW&8%B@$"
   val customCharsTable = " 0"
 
-  val converter = new AsciiConverter(GammaTable(2.2))
-  val asciiArt = converter.convert(imageData)
-  val saver = new FileSaver("src/main/resources/asciiArt2.txt")
+  val grayScaleConverter = new GrayScaleConverter()
+  val grayScaleImageData = grayScaleConverter.convert(rgbImageData)
+
+  val filter = new ScaleFilter(1.0)
+  val invertGrayscaleImageData = filter.apply(grayScaleImageData)
+
+  val asciiConverter = new AsciiConverter(GammaTable(2.2))
+  val asciiArt = asciiConverter.convert(invertGrayscaleImageData)
+
+  val saver = new FileSaver("src/main/resources/asciiArtFiltered.txt")
   saver.save(asciiArt)
 }
 
 case class Pixel(r: Int, g: Int, b: Int) {
 }
 
+abstract class ImageData(val width: Int, val height: Int)
 
-case class ImageData (
-  width: Int,
-  height: Int,
-  pixels: Array[Pixel],
-  format: String
-)
+case class RgbImageData(
+                         override val width: Int,
+                         override val height: Int,
+                         pixels: Array[Pixel],
+                         format: String
+                       ) extends ImageData(width, height)
+
+case class GrayscaleImageData(
+                               override val width: Int,
+                               override val height: Int,
+                               pixels: Array[Double]
+                             ) extends ImageData(width, height)
 
 case class AsciiImageData(
-  width: Int,
-  height: Int,
-  pixels: String,
-)
+                           override val width: Int,
+                           override val height: Int,
+                           pixels: String
+                         ) extends ImageData(width, height)
 
-object ImageData {
-  def fromBufferedImage(img: BufferedImage, format: String): ImageData = {
-    val w = img.getWidth
-    val h = img.getHeight
-    val pixels = Array.ofDim[Pixel](w * h)
-
-    for (y <- 0 until h; x <- 0 until w) {
-      val argb = img.getRGB(x, y)
-      pixels(y * w + x) = fromARGB(argb)
-    }
-
-    ImageData(w, h, pixels, format)
-  }
-
-  private def fromARGB(argb: Int): Pixel =
-    Pixel(
-      (argb >> 16) & 0xFF,
-      (argb >> 8) & 0xFF,
-      argb & 0xFF
-    )
-}
 
 trait ImageSource {
   def load() : ImageData
@@ -66,7 +59,7 @@ trait ImageSource {
 
 class FileImageSource(private val path: String) extends ImageSource {
 
-  override def load(): ImageData = {
+  override def load(): RgbImageData = {
     val file = new File(path)
     if (!file.exists())
       throw new IllegalArgumentException(s"File not found: ${file.getPath}")
@@ -111,22 +104,42 @@ object ImageReaderRegistry {
 trait ImageReader {
   def name: String
   def extensions: Set[String]
-  def read(file: File): ImageData
+  def read(file: File): RgbImageData
 }
 
 abstract class BufferedImageReader(val name: String, val extensions: Set[String])
   extends ImageReader {
 
-  override def read(file: File): ImageData = {
+  override def read(file: File): RgbImageData = {
     val img = ImageIO.read(file)
     if (img == null)
       throw new IllegalArgumentException(s"Cannot read $name image: ${file.getPath}")
-    ImageData.fromBufferedImage(img, name)
+    fromBufferedImage(img, name)
   }
+
+  protected def fromBufferedImage(img: BufferedImage, format: String): RgbImageData = {
+    val w = img.getWidth
+    val h = img.getHeight
+    val pixels = Array.ofDim[Pixel](w * h)
+
+    for (y <- 0 until h; x <- 0 until w) {
+      val argb = img.getRGB(x, y)
+      pixels(y * w + x) = fromARGB(argb)
+    }
+
+    RgbImageData(w, h, pixels, format)
+  }
+
+  protected def fromARGB(argb: Int): Pixel =
+    Pixel(
+      (argb >> 16) & 0xFF,
+      (argb >> 8) & 0xFF,
+      argb & 0xFF
+    )
 }
 
 class RandomImageSource(seed: Option[Long] = None) extends ImageSource {
-  override def load(): ImageData = {
+  override def load(): RgbImageData = {
     val rng = seed match {
       case Some(s) => new Random(s)
       case None => new Random()
@@ -143,7 +156,7 @@ class RandomImageSource(seed: Option[Long] = None) extends ImageSource {
       pixels(i) = Pixel(r, g, b)
     }
 
-    ImageData(width, height, pixels, "random")
+    RgbImageData(width, height, pixels, "random")
   }
 }
 
@@ -151,24 +164,126 @@ class PngReader extends BufferedImageReader("png", Set("png"))
 class JpegReader extends BufferedImageReader("jpeg", Set("jpg", "jpeg"))
 class GifReader extends BufferedImageReader("gif", Set("gif"))
 
-class AsciiConverter(table: AsciiTable) {
-  def convert(imageData: ImageData) : AsciiImageData = {
+trait ImageFilter[I <: ImageData, O <: ImageData] {
+  def apply(imageData: I): O
+}
+
+class InvertFilter extends ImageFilter[GrayscaleImageData, GrayscaleImageData] {
+  override def apply(image: GrayscaleImageData): GrayscaleImageData = {
+    val invertedPixels = image.pixels.map(p => 255 - p)
+    image.copy(pixels = invertedPixels)
+  }
+}
+class BrightnessFilter(delta: Int) extends ImageFilter[GrayscaleImageData, GrayscaleImageData] {
+  override def apply(image: GrayscaleImageData): GrayscaleImageData = {
+    val adjusted = image.pixels.map { p =>
+      val newValue = p + delta
+      Math.max(0, Math.min(255, newValue))
+    }
+    image.copy(pixels = adjusted)
+  }
+}
+class FlipFilter(flipX: Boolean, flipY: Boolean) extends ImageFilter[GrayscaleImageData, GrayscaleImageData] {
+  override def apply(image: GrayscaleImageData): GrayscaleImageData = {
+    val w = image.width
+    val h = image.height
+    val pixels = image.pixels
+    val flipped = Array.ofDim[Double](pixels.length)
+
+    for (y <- 0 until h; x <- 0 until w) {
+      val srcIndex = y * w + x
+
+      val newX = if (flipY) w - 1 - x else x
+      val newY = if (flipX) h - 1 - y else y
+
+      val dstIndex = newY * w + newX
+      flipped(dstIndex) = pixels(srcIndex)
+    }
+
+    image.copy(pixels = flipped)
+  }
+}
+class ScaleFilter(scale: Double) extends ImageFilter[GrayscaleImageData, GrayscaleImageData] {
+  override def apply(image: GrayscaleImageData): GrayscaleImageData = {
+    scale match {
+      case 1.0 =>
+        image
+
+      case 4.0 =>
+        val w = image.width
+        val h = image.height
+        val src = image.pixels
+        val newW = w * 2
+        val newH = h * 2
+        val newPixels = Array.ofDim[Double](newW * newH)
+
+        for (y <- 0 until h; x <- 0 until w) {
+          val value = src(y * w + x)
+          for (dy <- 0 until 2; dx <- 0 until 2) {
+            val nx = x * 2 + dx
+            val ny = y * 2 + dy
+            newPixels(ny * newW + nx) = value
+          }
+        }
+
+        GrayscaleImageData(newW, newH, newPixels)
+
+      case 0.25 =>
+        val w = image.width
+        val h = image.height
+        val src = image.pixels
+        val newW = Math.max(1, w / 2)
+        val newH = Math.max(1, h / 2)
+        val newPixels = Array.ofDim[Double](newW * newH)
+
+        for (y <- 0 until newH; x <- 0 until newW) {
+          var sum = 0.0
+          var count = 0
+          for (dy <- 0 until 2; dx <- 0 until 2) {
+            val sx = x * 2 + dx
+            val sy = y * 2 + dy
+            if (sx < w && sy < h) {
+              sum += src(sy * w + sx)
+              count += 1
+            }
+          }
+          newPixels(y * newW + x) = if (count > 0) sum / count else 0
+        }
+
+        GrayscaleImageData(newW, newH, newPixels)
+
+      case _ =>
+        throw new IllegalArgumentException("ScaleFilter supports only 0.25, 1, and 4.")
+    }
+  }
+}
+
+
+trait Converter[I <: ImageData, O <: ImageData] {
+  def convert(input: I): O
+}
+
+class GrayScaleConverter extends Converter[RgbImageData, GrayscaleImageData] {
+
+  override def convert(input: RgbImageData): GrayscaleImageData = {
+    val pixels = input.pixels.map { pixel =>
+      0.3 * pixel.r + 0.59 * pixel.g + 0.11 * pixel.b
+    }
+    GrayscaleImageData(input.width, input.height, pixels)
+  }
+}
+class AsciiConverter(table: AsciiTable) extends Converter[GrayscaleImageData, AsciiImageData] {
+
+  override def convert(input: GrayscaleImageData): AsciiImageData = {
     val sb = new StringBuilder
-    val pixels = imageData.pixels
-    for(y <- 0 until imageData.height) {
-      for(x <- 0 until imageData.width) {
-        val index = y * imageData.width + x
-        val pixel = pixels(index)
-        val greyscalePixel = toGreyscale(pixel.r, pixel.g, pixel.b)
-        val asciiPixel = table.map(greyscalePixel)
-        sb.append(asciiPixel)
+    for (y <- 0 until input.height) {
+      for (x <- 0 until input.width) {
+        val gray = input.pixels(y * input.width + x)
+        val asciiChar = table.map(gray)
+        sb.append(asciiChar)
       }
     }
-    AsciiImageData(imageData.width, imageData.height, sb.toString())
-  }
-
-  private def toGreyscale(r: Int, g: Int, b: Int): Double = {
-    0.3 * r + 0.59 * g + 0.11 * b
+    AsciiImageData(input.width, input.height, sb.toString())
   }
 }
 
@@ -183,7 +298,6 @@ class LinearTable(val charsTable: String = " .:-=+*#%@") extends AsciiTable {
     charsTable.charAt(index)
   }
 }
-
 class GammaTable(val gamma: Double = 1.8) extends AsciiTable {
   val charsTable = " .:-=+*#%@"
 
@@ -223,12 +337,10 @@ abstract class AbstractSaver extends Saver {
     }
   }
 }
-
 class ConsoleSaver extends AbstractSaver {
   override protected def writeChar(c: Char): Unit = print(c)
   override protected def writeNewLine(): Unit = println()
 }
-
 class FileSaver(path: String) extends AbstractSaver {
   private var writer: PrintWriter = _
 
