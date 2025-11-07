@@ -7,25 +7,28 @@ import scala.util.Random
 
 @main def main: Unit = {
   val path = "src/main/resources/linux.jpg"
-
-  val imageSource = new FileImageSource(path)
-  val rgbImageData = imageSource.load()
-
-
   val longBorke = " .'`^\",:;Il!i><~+_-?][]{}1()|\\//tfrxnuvczyXUJCLQ0OZmwpqdbkhao*#MW&8%B@$"
   val customCharsTable = " 0"
 
+
+  val imageSource = new FileImageSource(path)
   val grayScaleConverter = new GrayScaleConverter()
-  val grayScaleImageData = grayScaleConverter.convert(rgbImageData)
-
   val filter = new ScaleFilter(1.0)
-  val invertGrayscaleImageData = filter.apply(grayScaleImageData)
+  val asciiConverter = new AsciiConverter(LinearTable())
+  val fileSaver = new FileSaver("src/main/resources/asciiArt.txt")
+  val consoleSaver = new ConsoleSaver()
 
-  val asciiConverter = new AsciiConverter(GammaTable(2.2))
-  val asciiArt = asciiConverter.convert(invertGrayscaleImageData)
 
-  val saver = new FileSaver("src/main/resources/asciiArtFiltered.txt")
-  saver.save(asciiArt)
+  val pipelineBuilder = new PipelineBuilder()
+  val pipeline = pipelineBuilder
+    .withImageSource(imageSource)
+    .withGrayConverter(grayScaleConverter)
+    .withAsciiConverter(asciiConverter)
+    .addSaver(fileSaver)
+    .addSaver(consoleSaver)
+    .build()
+
+  pipeline.run()
 }
 
 case class Pixel(r: Int, g: Int, b: Int) {
@@ -54,7 +57,7 @@ case class AsciiImageData(
 
 
 trait ImageSource {
-  def load() : ImageData
+  def load() : RgbImageData
 }
 
 class FileImageSource(private val path: String) extends ImageSource {
@@ -351,4 +354,58 @@ class FileSaver(path: String) extends AbstractSaver {
   override protected def writeChar(c: Char): Unit = writer.print(c)
   override protected def writeNewLine(): Unit = writer.println()
   override protected def close(): Unit = writer.close()
+}
+
+class Pipeline(
+                val imageSource: ImageSource,
+                val grayConverter: Converter[RgbImageData, GrayscaleImageData],
+                val filters: Seq[ImageFilter[GrayscaleImageData, GrayscaleImageData]],
+                val asciiConverter: Converter[GrayscaleImageData, AsciiImageData],
+                val savers: Seq[Saver]
+              ) {
+  def run(): Unit = {
+    val rgb = imageSource.load()
+    val gray = grayConverter.convert(rgb)
+    val filtered = filters.foldLeft(gray)((img, f) => f.apply(img))
+    val ascii = asciiConverter.convert(filtered)
+    savers.foreach(_.save(ascii))
+  }
+}
+
+class PipelineBuilder {
+  private var imageSource: Option[ImageSource] = None
+  private var grayConverter: Option[Converter[RgbImageData, GrayscaleImageData]] = None
+  private var filters: Seq[ImageFilter[GrayscaleImageData, GrayscaleImageData]] = Seq.empty
+  private var asciiConverter: Option[Converter[GrayscaleImageData, AsciiImageData]] = None
+  private var savers: Seq[Saver] = Seq.empty
+
+  def withImageSource(src: ImageSource): PipelineBuilder = {
+    imageSource = Some(src); this
+  }
+
+  def withGrayConverter(conv: Converter[RgbImageData, GrayscaleImageData]): PipelineBuilder = {
+    grayConverter = Some(conv); this
+  }
+
+  def addFilter(f: ImageFilter[GrayscaleImageData, GrayscaleImageData]): PipelineBuilder = {
+    filters = filters :+ f; this
+  }
+
+  def withAsciiConverter(conv: Converter[GrayscaleImageData, AsciiImageData]): PipelineBuilder = {
+    asciiConverter = Some(conv); this
+  }
+
+  def addSaver(s: Saver): PipelineBuilder = {
+    savers = savers :+ s; this
+  }
+
+  def build(): Pipeline = {
+    new Pipeline(
+      imageSource.getOrElse(throw new IllegalStateException("ImageSource not set")),
+      grayConverter.getOrElse(new GrayScaleConverter()),
+      filters,
+      asciiConverter.getOrElse(new AsciiConverter(new LinearTable())),
+      if (savers.nonEmpty) savers else Seq(new ConsoleSaver())
+    )
+  }
 }
