@@ -18,7 +18,7 @@ import scala.util.Random
   val grayScaleConverter = new GrayScaleConverter()
   val grayScaleImageData = grayScaleConverter.convert(rgbImageData)
 
-  val filter = new FlipFilter(false, true)
+  val filter = new ScaleFilter(1.0)
   val invertGrayscaleImageData = filter.apply(grayScaleImageData)
 
   val asciiConverter = new AsciiConverter(GammaTable(2.2))
@@ -174,7 +174,6 @@ class InvertFilter extends ImageFilter[GrayscaleImageData, GrayscaleImageData] {
     image.copy(pixels = invertedPixels)
   }
 }
-
 class BrightnessFilter(delta: Int) extends ImageFilter[GrayscaleImageData, GrayscaleImageData] {
   override def apply(image: GrayscaleImageData): GrayscaleImageData = {
     val adjusted = image.pixels.map { p =>
@@ -184,7 +183,6 @@ class BrightnessFilter(delta: Int) extends ImageFilter[GrayscaleImageData, Grays
     image.copy(pixels = adjusted)
   }
 }
-
 class FlipFilter(flipX: Boolean, flipY: Boolean) extends ImageFilter[GrayscaleImageData, GrayscaleImageData] {
   override def apply(image: GrayscaleImageData): GrayscaleImageData = {
     val w = image.width
@@ -205,6 +203,60 @@ class FlipFilter(flipX: Boolean, flipY: Boolean) extends ImageFilter[GrayscaleIm
     image.copy(pixels = flipped)
   }
 }
+class ScaleFilter(scale: Double) extends ImageFilter[GrayscaleImageData, GrayscaleImageData] {
+  override def apply(image: GrayscaleImageData): GrayscaleImageData = {
+    scale match {
+      case 1.0 =>
+        image
+
+      case 4.0 =>
+        val w = image.width
+        val h = image.height
+        val src = image.pixels
+        val newW = w * 2
+        val newH = h * 2
+        val newPixels = Array.ofDim[Double](newW * newH)
+
+        for (y <- 0 until h; x <- 0 until w) {
+          val value = src(y * w + x)
+          for (dy <- 0 until 2; dx <- 0 until 2) {
+            val nx = x * 2 + dx
+            val ny = y * 2 + dy
+            newPixels(ny * newW + nx) = value
+          }
+        }
+
+        GrayscaleImageData(newW, newH, newPixels)
+
+      case 0.25 =>
+        val w = image.width
+        val h = image.height
+        val src = image.pixels
+        val newW = Math.max(1, w / 2)
+        val newH = Math.max(1, h / 2)
+        val newPixels = Array.ofDim[Double](newW * newH)
+
+        for (y <- 0 until newH; x <- 0 until newW) {
+          var sum = 0.0
+          var count = 0
+          for (dy <- 0 until 2; dx <- 0 until 2) {
+            val sx = x * 2 + dx
+            val sy = y * 2 + dy
+            if (sx < w && sy < h) {
+              sum += src(sy * w + sx)
+              count += 1
+            }
+          }
+          newPixels(y * newW + x) = if (count > 0) sum / count else 0
+        }
+
+        GrayscaleImageData(newW, newH, newPixels)
+
+      case _ =>
+        throw new IllegalArgumentException("ScaleFilter supports only 0.25, 1, and 4.")
+    }
+  }
+}
 
 
 trait Converter[I <: ImageData, O <: ImageData] {
@@ -220,7 +272,6 @@ class GrayScaleConverter extends Converter[RgbImageData, GrayscaleImageData] {
     GrayscaleImageData(input.width, input.height, pixels)
   }
 }
-
 class AsciiConverter(table: AsciiTable) extends Converter[GrayscaleImageData, AsciiImageData] {
 
   override def convert(input: GrayscaleImageData): AsciiImageData = {
@@ -247,7 +298,6 @@ class LinearTable(val charsTable: String = " .:-=+*#%@") extends AsciiTable {
     charsTable.charAt(index)
   }
 }
-
 class GammaTable(val gamma: Double = 1.8) extends AsciiTable {
   val charsTable = " .:-=+*#%@"
 
@@ -287,12 +337,10 @@ abstract class AbstractSaver extends Saver {
     }
   }
 }
-
 class ConsoleSaver extends AbstractSaver {
   override protected def writeChar(c: Char): Unit = print(c)
   override protected def writeNewLine(): Unit = println()
 }
-
 class FileSaver(path: String) extends AbstractSaver {
   private var writer: PrintWriter = _
 
