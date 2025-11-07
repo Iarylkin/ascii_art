@@ -18,13 +18,13 @@ import scala.util.Random
   val grayScaleConverter = new GrayScaleConverter()
   val grayScaleImageData = grayScaleConverter.convert(rgbImageData)
 
-  val invertFilter = new InvertFilter()
-  val invertGrayscaleImageData = invertFilter.apply(grayScaleImageData)
+  val filter = new BrightnessFilter(-100)
+  val invertGrayscaleImageData = filter.apply(grayScaleImageData)
 
   val asciiConverter = new AsciiConverter(GammaTable(2.2))
   val asciiArt = asciiConverter.convert(invertGrayscaleImageData)
 
-  val saver = new FileSaver("src/main/resources/asciiArt.txt")
+  val saver = new FileSaver("src/main/resources/asciiArtFiltered.txt")
   saver.save(asciiArt)
 }
 
@@ -172,6 +172,16 @@ class InvertFilter extends ImageFilter[GrayscaleImageData, GrayscaleImageData] {
   override def apply(image: GrayscaleImageData): GrayscaleImageData = {
     val invertedPixels = image.pixels.map(p => 255 - p)
     image.copy(pixels = invertedPixels)
+  }
+}
+
+class BrightnessFilter(delta: Int) extends ImageFilter[GrayscaleImageData, GrayscaleImageData] {
+  override def apply(image: GrayscaleImageData): GrayscaleImageData = {
+    val adjusted = image.pixels.map { p =>
+      val newValue = p + delta
+      Math.max(0, Math.min(255, newValue))
+    }
+    image.copy(pixels = adjusted)
   }
 }
 
