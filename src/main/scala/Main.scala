@@ -2,34 +2,44 @@ package Main
 
 import java.awt.image.BufferedImage
 import java.io.{File, PrintWriter}
+import java.util.regex.Pattern
 import javax.imageio.ImageIO
+import scala.collection.mutable.ListBuffer
+import scala.io.StdIn
 import scala.util.Random
 
 @main def main: Unit = {
+  val consoleUI = new ConsoleUI()
+  val commands = consoleUI.getCommands(Array())
+//
+//  val commands = parser.parse(List("--image", "src/main/resources/linux.jpg", "--scale", "0.25", "--flip", "y", "--output-console",
+//    "--output-file", "src/main/resources/asciiArt.txt"))
 
-  println("=== Starting Manual Test of AsciiArtProcessor ===")
+  AsciiArtProcessor.run(commands)
 
-  val testCommands = List(
-    CommandDTO("image", List("src/main/resources/linux.jpg")),
-    CommandDTO("scale", List("0.25")),
-    CommandDTO("brightness", List("20")),
-    CommandDTO("flip", List("y")),
-    CommandDTO("output-console", List.empty),
-    CommandDTO("output-file", List("src/main/resources/asciiArt.txt"))
-
-  )
-
-  println(s"INFO: Sending ${testCommands.length} commands to the Processor...")
-
-  try {
-    AsciiArtProcessor.run(testCommands)
-    println("\n=== Test Finished Successfully ===")
-  } catch {
-    case e: Exception =>
-      println(s"\n!!! Test Failed !!!")
-      println(s"Error: ${e.getMessage}")
-      e.printStackTrace()
-  }
+//  println("=== Starting Manual Test of AsciiArtProcessor ===")
+//
+//  val testCommands = List(
+//    CommandDTO("image", List("src/main/resources/linux.jpg")),
+//    CommandDTO("scale", List("0.25")),
+//    CommandDTO("brightness", List("20")),
+//    CommandDTO("flip", List("y")),
+//    CommandDTO("output-console", List.empty),
+//    CommandDTO("output-file", List("src/main/resources/asciiArt.txt"))
+//
+//  )
+//
+//  println(s"INFO: Sending ${testCommands.length} commands to the Processor...")
+//
+//  try {
+//    AsciiArtProcessor.run(testCommands)
+//    println("\n=== Test Finished Successfully ===")
+//  } catch {
+//    case e: Exception =>
+//      println(s"\n!!! Test Failed !!!")
+//      println(s"Error: ${e.getMessage}")
+//      e.printStackTrace()
+//  }
 }
 
 case class Pixel(r: Int, g: Int, b: Int) {
@@ -521,3 +531,101 @@ object AsciiArtProcessor {
     builder.build().run()
   }
 }
+
+class CommandLineParser {
+  private val syntax: Map[String, (String, Int)] = Map(
+    "--image"          -> ("image", 1),
+    "--image-random"   -> ("image-random", 0),
+
+    "--table"          -> ("table", 1),
+    "--custom-table"   -> ("custom-table", 1),
+
+    "--scale"          -> ("scale", 1),
+    "--rotate"         -> ("rotate", 1),
+    "--invert"         -> ("invert", 0),
+    "--brightness"     -> ("brightness", 1),
+    "--flip"           -> ("flip", 1),
+
+    "--output-console" -> ("output-console", 0),
+    "--output-file"    -> ("output-file", 1)
+  )
+  def parse(args: List[String]): List[CommandDTO] = {
+    parseRecursive(args, List.empty)
+  }
+
+  private def parseRecursive(currentArgs: List[String], acc: List[CommandDTO]): List[CommandDTO] = {
+    currentArgs match {
+      case Nil => acc
+
+      case head :: tail =>
+        syntax.get(head) match {
+          case Some((name, paramCount)) =>
+
+            if (tail.length < paramCount) {
+              throw new IllegalArgumentException(s"Error: Argument '$head' requires $paramCount parameter(s).")
+            }
+
+            val params = tail.take(paramCount)
+
+            if (params.exists(_.startsWith("--"))) {
+              throw new IllegalArgumentException(s"Error: Value for '$head' cannot be another flag (found '${params.find(_.startsWith("--")).get}').")
+            }
+
+            val cmd = CommandDTO(name, params)
+            val remaining = tail.drop(paramCount)
+
+            parseRecursive(remaining, acc :+ cmd)
+
+          case None =>
+            throw new IllegalArgumentException(s"Error: Unknown argument '$head'")
+        }
+    }
+  }
+}
+
+class ConsoleInput {
+
+  def read(): List[String] = {
+    val rawInput = StdIn.readLine()
+
+    if (rawInput == null || rawInput.trim.isEmpty) {
+      List.empty
+    } else {
+      splitString(rawInput)
+    }
+  }
+
+  private def splitString(input: String): List[String] = {
+    val result = ListBuffer[String]()
+    val regex = Pattern.compile("\"([^\"]*)\"|'([^']*)'|[^\\s\"']+")
+    val matcher = regex.matcher(input)
+
+    while (matcher.find()) {
+      if (matcher.group(1) != null) result += matcher.group(1)
+      else if (matcher.group(2) != null) result += matcher.group(2)
+      else result += matcher.group()
+    }
+    result.toList
+  }
+}
+
+class ConsoleUI {
+
+  private val parser = new CommandLineParser()
+  private val consoleInput = new ConsoleInput()
+
+  def getCommands(args: Array[String]): List[CommandDTO] = {
+
+    val rawArgs = if (args.nonEmpty) {
+      args.toList
+    } else {
+      consoleInput.read()
+    }
+
+    if (rawArgs.isEmpty) {
+      return List.empty
+    }
+    parser.parse(rawArgs)
+  }
+}
+
