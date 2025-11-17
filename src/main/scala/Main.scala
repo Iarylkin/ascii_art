@@ -6,29 +6,30 @@ import javax.imageio.ImageIO
 import scala.util.Random
 
 @main def main: Unit = {
-  val path = "src/main/resources/linux.jpg"
-  val longBorke = " .'`^\",:;Il!i><~+_-?][]{}1()|\\//tfrxnuvczyXUJCLQ0OZmwpqdbkhao*#MW&8%B@$"
-  val customCharsTable = " 0"
 
+  println("=== Starting Manual Test of AsciiArtProcessor ===")
 
-  val imageSource = new FileImageSource(path)
-  val grayScaleConverter = new GrayScaleConverter()
-  val filter = new ScaleFilter(1.0)
-  val asciiConverter = new AsciiConverter(LinearTable())
-  val fileSaver = new FileSaver("src/main/resources/asciiArt.txt")
-  val consoleSaver = new ConsoleSaver()
+  val testCommands = List(
+    CommandDTO("image", List("src/main/resources/linux.jpg")),
+    CommandDTO("scale", List("0.25")),
+    CommandDTO("brightness", List("20")),
+    CommandDTO("flip", List("y")),
+    CommandDTO("output-console", List.empty),
+    CommandDTO("output-file", List("src/main/resources/asciiArt.txt"))
 
+  )
 
-  val pipelineBuilder = new PipelineBuilder()
-  val pipeline = pipelineBuilder
-    .withImageSource(imageSource)
-    .withGrayConverter(grayScaleConverter)
-    .withAsciiConverter(asciiConverter)
-    .addSaver(fileSaver)
-    .addSaver(consoleSaver)
-    .build()
+  println(s"INFO: Sending ${testCommands.length} commands to the Processor...")
 
-  pipeline.run()
+  try {
+    AsciiArtProcessor.run(testCommands)
+    println("\n=== Test Finished Successfully ===")
+  } catch {
+    case e: Exception =>
+      println(s"\n!!! Test Failed !!!")
+      println(s"Error: ${e.getMessage}")
+      e.printStackTrace()
+  }
 }
 
 case class Pixel(r: Int, g: Int, b: Int) {
@@ -407,5 +408,116 @@ class PipelineBuilder {
       asciiConverter.getOrElse(new AsciiConverter(new LinearTable())),
       if (savers.nonEmpty) savers else Seq(new ConsoleSaver())
     )
+  }
+}
+
+case class CommandDTO(name: String, params: List[String] = Nil)
+
+trait CommandHandler {
+  def handle(cmd: CommandDTO, builder: PipelineBuilder): Unit
+}
+
+class ImageSourceHandler extends CommandHandler {
+  override def handle(cmd: CommandDTO, builder: PipelineBuilder): Unit = {
+    val path = cmd.params.headOption.getOrElse(
+      throw new IllegalArgumentException("Error: Command '--image' requires a file path argument.")
+    )
+
+    builder.withImageSource(new FileImageSource(path))
+  }
+}
+
+class ScaleFilterHandler extends CommandHandler {
+  override def handle(cmd: CommandDTO, builder: PipelineBuilder): Unit = {
+    val paramStr = cmd.params.headOption.getOrElse(
+      throw new IllegalArgumentException("Error: Command '--scale' requires a number argument (e.g., 0.25, 1, 4).")
+    )
+
+    val scale = paramStr.toDoubleOption.getOrElse(
+      throw new IllegalArgumentException(s"Error: '$paramStr' is not a valid number for scale.")
+    )
+
+    builder.addFilter(new ScaleFilter(scale))
+  }
+}
+
+class FileOutputHandler extends CommandHandler {
+  override def handle(cmd: CommandDTO, builder: PipelineBuilder): Unit = {
+    val path = cmd.params.headOption.getOrElse(
+      throw new IllegalArgumentException("Error: Command '--output-file' requires a file path argument.")
+    )
+
+    builder.addSaver(new FileSaver(path))
+  }
+}
+
+class ConsoleOutputHandler extends CommandHandler {
+  override def handle(cmd: CommandDTO, builder: PipelineBuilder): Unit = {
+    builder.addSaver(new ConsoleSaver())
+  }
+}
+
+class InvertFilterHandler extends CommandHandler {
+  override def handle(cmd: CommandDTO, builder: PipelineBuilder): Unit = {
+    builder.addFilter(new InvertFilter())
+  }
+}
+
+class BrightnessFilterHandler extends CommandHandler {
+  override def handle(cmd: CommandDTO, builder: PipelineBuilder): Unit = {
+
+    val param = cmd.params.headOption.getOrElse(
+      throw new IllegalArgumentException("Error: Command '--brightness' requires an integer argument.")
+    )
+
+    val delta = param.toIntOption.getOrElse(
+      throw new IllegalArgumentException(s"Error: '$param' is not a valid integer for brightness.")
+    )
+
+    builder.addFilter(new BrightnessFilter(delta))
+  }
+}
+
+class FlipFilterHandler extends CommandHandler {
+  override def handle(cmd: CommandDTO, builder: PipelineBuilder): Unit = {
+
+    val flipX = cmd.params.contains("x")
+    val flipY = cmd.params.contains("y")
+
+    if (!flipX && !flipY) {
+      throw new IllegalArgumentException("Error: Command '--flip' requires 'x' and/or 'y' parameters.")
+    }
+
+    builder.addFilter(new FlipFilter(flipX, flipY))
+  }
+}
+
+object CommandRegistry {
+  private val handlers = Map(
+    "image"          -> new ImageSourceHandler(),
+    "scale"          -> new ScaleFilterHandler(),
+    "invert"         -> new InvertFilterHandler(),
+    "output-console" -> new ConsoleOutputHandler(),
+    "brightness" -> new BrightnessFilterHandler(),
+    "flip"       -> new FlipFilterHandler(),
+    "output-file"    -> new FileOutputHandler()
+  )
+
+  def getHandler(name: String): Option[CommandHandler] = handlers.get(name.toLowerCase)
+}
+
+object AsciiArtProcessor {
+
+  def run(commands: List[CommandDTO]): Unit = {
+    val builder = new PipelineBuilder()
+
+    commands.foreach { cmd =>
+      CommandRegistry.getHandler(cmd.name) match {
+        case Some(handler) => handler.handle(cmd, builder)
+        case None => println(s"Warning: Unknown command '${cmd.name}'")
+      }
+    }
+
+    builder.build().run()
   }
 }
