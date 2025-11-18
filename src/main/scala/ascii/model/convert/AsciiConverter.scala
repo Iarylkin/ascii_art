@@ -1,19 +1,7 @@
 package ascii.model.convert
 
-import ascii.model.image.{AsciiImageData, GrayscaleImageData, ImageData, RgbImageData}
-
-trait Converter[I <: ImageData, O <: ImageData] {
-  def convert(input: I): O
-}
-
-class GrayScaleConverter extends Converter[RgbImageData, GrayscaleImageData] {
-  override def convert(input: RgbImageData): GrayscaleImageData = {
-    val pixels = input.pixels.map { pixel =>
-      0.3 * pixel.r + 0.59 * pixel.g + 0.11 * pixel.b
-    }
-    GrayscaleImageData(input.width, input.height, pixels)
-  }
-}
+import ascii.model.convert.tables.AsciiTable
+import ascii.model.image.{AsciiImageData, GrayscaleImageData}
 
 class AsciiConverter(table: AsciiTable) extends Converter[GrayscaleImageData, AsciiImageData] {
   override def convert(input: GrayscaleImageData): AsciiImageData = {

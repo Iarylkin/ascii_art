@@ -1,36 +1,10 @@
-package ascii.model.load
+package ascii.model.load.reader
 
 import ascii.model.image.{Pixel, RgbImageData}
+
 import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
-
-trait ImageReader {
-  def extensions: Set[String]
-  def read(file: File): RgbImageData
-}
-
-object ImageReaderRegistry {
-  def default: ImageReaderRegistry =
-    new ImageReaderRegistry(Vector(
-      new PngReader,
-      new JpegReader,
-      new GifReader
-    ))
-}
-
-class ImageReaderRegistry(private val readers: Vector[ImageReader]) {
-  def pickFor(file: File): Option[ImageReader] = {
-    val name = file.getName
-    val idx = name.lastIndexOf('.')
-    if (idx >= 0 && idx < name.length - 1) {
-      val ext = name.substring(idx + 1).toLowerCase
-      readers.find(_.extensions.contains(ext))
-    } else {
-      None
-    }
-  }
-}
 
 abstract class BufferedImageReader(val name: String, val extensions: Set[String])
   extends ImageReader {
@@ -58,7 +32,3 @@ abstract class BufferedImageReader(val name: String, val extensions: Set[String]
     RgbImageData(w, h, pixels, format)
   }
 }
-
-class PngReader extends BufferedImageReader("png", Set("png"))
-class JpegReader extends BufferedImageReader("jpeg", Set("jpg", "jpeg"))
-class GifReader extends BufferedImageReader("gif", Set("gif"))

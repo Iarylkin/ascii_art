@@ -1,6 +1,7 @@
 package ascii.model
 
-import ascii.model.convert.{AsciiConverter, Converter, GrayScaleConverter, LinearTable}
+import ascii.model.convert.tables.LinearTable
+import ascii.model.convert.{AsciiConverter, Converter, GrayScaleConverter}
 import ascii.model.filter.ImageFilter
 import ascii.model.image.{AsciiImageData, GrayscaleImageData, RgbImageData}
 import ascii.model.load.ImageSource
