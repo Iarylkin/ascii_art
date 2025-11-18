@@ -1,6 +1,6 @@
-package ascii.modules.filter
+package ascii.model.filter
 
-import ascii.model.GrayscaleImageData
+import ascii.model.image.GrayscaleImageData
 
 trait ImageFilter[I, O] {
   def apply(image: I): O

@@ -1,6 +1,8 @@
-package ascii.process
+package ascii.controller.handlers
 
-object CommandRegistry {
+import ascii.controller.handlers.*
+
+class CommandRegistry {
   private val handlers: Map[String, CommandHandler] = Map(
     "image"          -> new ImageSourceHandler(),
     "image-random"   -> new RandomImageHandler(),

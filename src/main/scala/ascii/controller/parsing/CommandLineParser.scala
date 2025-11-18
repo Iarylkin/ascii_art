@@ -1,6 +1,5 @@
-package ascii.ui
+package ascii.controller.parsing
 
-import ascii.process.CommandDTO
 import scala.annotation.tailrec
 
 class CommandLineParser {

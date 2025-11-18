@@ -1,7 +1,7 @@
 package Main
 
-import ascii.process.AsciiArtProcessor
-import ascii.ui.ConsoleUI
+import ascii.controller.AsciiArtProcessor
+import ascii.view.ConsoleUI
 
 
 @main def main(args: String*): Unit = {

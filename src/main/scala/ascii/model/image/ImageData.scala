@@ -1,4 +1,4 @@
-package ascii.model
+package ascii.model.image
 
 sealed abstract class ImageData(val width: Int, val height: Int)
 

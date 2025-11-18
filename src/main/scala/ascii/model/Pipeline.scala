@@ -1,10 +1,10 @@
-package ascii.process
+package ascii.model
 
-import ascii.model._
-import ascii.modules.load.ImageSource
-import ascii.modules.convert.{Converter, GrayScaleConverter, AsciiConverter, LinearTable}
-import ascii.modules.filter.ImageFilter
-import ascii.modules.save.{Saver, ConsoleSaver}
+import ascii.model.convert.{AsciiConverter, Converter, GrayScaleConverter, LinearTable}
+import ascii.model.filter.ImageFilter
+import ascii.model.image.{AsciiImageData, GrayscaleImageData, RgbImageData}
+import ascii.model.load.ImageSource
+import ascii.model.save.{ConsoleSaver, Saver}
 
 // The Process: Immutable definition of the workflow
 class Pipeline(

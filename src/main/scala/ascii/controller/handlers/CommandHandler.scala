@@ -1,8 +1,10 @@
-package ascii.process
+package ascii.controller.handlers
 
-import ascii.modules.load.{FileImageSource, RandomImageSource}
-import ascii.modules.filter._
-import ascii.modules.save.{FileSaver, ConsoleSaver}
+import ascii.controller.parsing.CommandDTO
+import ascii.model.PipelineBuilder
+import ascii.model.filter.{BrightnessFilter, FlipFilter, InvertFilter, ScaleFilter}
+import ascii.model.load.{FileImageSource, RandomImageSource}
+import ascii.model.save.{ConsoleSaver, FileSaver}
 
 trait CommandHandler {
   def handle(cmd: CommandDTO, builder: PipelineBuilder): Unit
@@ -17,7 +19,7 @@ class ImageSourceHandler extends CommandHandler {
 
 class RandomImageHandler extends CommandHandler {
   override def handle(cmd: CommandDTO, builder: PipelineBuilder): Unit = {
-    builder.withImageSource(new RandomImageSource()) 
+    builder.withImageSource(new RandomImageSource())
   }
 }
 

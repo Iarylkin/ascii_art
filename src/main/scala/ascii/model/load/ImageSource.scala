@@ -1,6 +1,6 @@
-package ascii.modules.load
+package ascii.model.load
 
-import ascii.model.{Pixel, RgbImageData}
+import ascii.model.image.{Pixel, RgbImageData}
 
 import java.io.File
 import scala.util.Random

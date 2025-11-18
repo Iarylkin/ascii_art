@@ -1,6 +1,6 @@
-package ascii.modules.convert
+package ascii.model.convert
 
-import ascii.model._
+import ascii.model.image.{AsciiImageData, GrayscaleImageData, ImageData, RgbImageData}
 
 trait Converter[I <: ImageData, O <: ImageData] {
   def convert(input: I): O

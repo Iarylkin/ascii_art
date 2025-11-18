@@ -1,6 +1,6 @@
-package ascii.modules.save
+package ascii.model.save
 
-import ascii.model.AsciiImageData
+import ascii.model.image.AsciiImageData
 import java.io.{File, PrintWriter}
 
 trait Saver {

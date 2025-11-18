@@ -1,4 +1,4 @@
-package ascii.modules.convert
+package ascii.model.convert
 
 trait AsciiTable {
   def map(gray: Double): Char

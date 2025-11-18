@@ -1,6 +1,6 @@
-package ascii.ui
+package ascii.view
 
-import ascii.process.CommandDTO
+import ascii.controller.parsing.{CommandDTO, CommandLineParser}
 
 object ConsoleUI {
 
