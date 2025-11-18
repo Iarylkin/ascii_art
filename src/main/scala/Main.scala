@@ -2,44 +2,21 @@ package Main
 
 import java.awt.image.BufferedImage
 import java.io.{File, PrintWriter}
-import java.util.regex.Pattern
 import javax.imageio.ImageIO
-import scala.collection.mutable.ListBuffer
-import scala.io.StdIn
 import scala.util.Random
 
-@main def main: Unit = {
-  val consoleUI = new ConsoleUI()
-  val commands = consoleUI.getCommands(Array())
-//
-//  val commands = parser.parse(List("--image", "src/main/resources/linux.jpg", "--scale", "0.25", "--flip", "y", "--output-console",
-//    "--output-file", "src/main/resources/asciiArt.txt"))
+@main def main(args: String*): Unit = {
+  try {
 
-  AsciiArtProcessor.run(commands)
+    val commands = ConsoleUI.start(args.toArray)
+    if (commands.isEmpty) return
 
-//  println("=== Starting Manual Test of AsciiArtProcessor ===")
-//
-//  val testCommands = List(
-//    CommandDTO("image", List("src/main/resources/linux.jpg")),
-//    CommandDTO("scale", List("0.25")),
-//    CommandDTO("brightness", List("20")),
-//    CommandDTO("flip", List("y")),
-//    CommandDTO("output-console", List.empty),
-//    CommandDTO("output-file", List("src/main/resources/asciiArt.txt"))
-//
-//  )
-//
-//  println(s"INFO: Sending ${testCommands.length} commands to the Processor...")
-//
-//  try {
-//    AsciiArtProcessor.run(testCommands)
-//    println("\n=== Test Finished Successfully ===")
-//  } catch {
-//    case e: Exception =>
-//      println(s"\n!!! Test Failed !!!")
-//      println(s"Error: ${e.getMessage}")
-//      e.printStackTrace()
-//  }
+    AsciiArtProcessor.run(commands)
+
+  } catch {
+    case e: Exception =>
+      println(s"Error: ${e.getMessage}")
+  }
 }
 
 case class Pixel(r: Int, g: Int, b: Int) {
@@ -583,49 +560,17 @@ class CommandLineParser {
   }
 }
 
-class ConsoleInput {
-
-  def read(): List[String] = {
-    val rawInput = StdIn.readLine()
-
-    if (rawInput == null || rawInput.trim.isEmpty) {
-      List.empty
-    } else {
-      splitString(rawInput)
-    }
-  }
-
-  private def splitString(input: String): List[String] = {
-    val result = ListBuffer[String]()
-    val regex = Pattern.compile("\"([^\"]*)\"|'([^']*)'|[^\\s\"']+")
-    val matcher = regex.matcher(input)
-
-    while (matcher.find()) {
-      if (matcher.group(1) != null) result += matcher.group(1)
-      else if (matcher.group(2) != null) result += matcher.group(2)
-      else result += matcher.group()
-    }
-    result.toList
-  }
-}
-
-class ConsoleUI {
+object ConsoleUI {
 
   private val parser = new CommandLineParser()
-  private val consoleInput = new ConsoleInput()
 
-  def getCommands(args: Array[String]): List[CommandDTO] = {
+  def start(args: Array[String]): List[CommandDTO] = {
 
-    val rawArgs = if (args.nonEmpty) {
-      args.toList
-    } else {
-      consoleInput.read()
-    }
-
-    if (rawArgs.isEmpty) {
+    if (args.isEmpty) {
+      println("Usage: run --image <path> [--rotate <deg>] [--scale <val>] ...")
       return List.empty
     }
-    parser.parse(rawArgs)
+    parser.parse(args.toList)
   }
 }
 
