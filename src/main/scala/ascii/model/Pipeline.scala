@@ -68,7 +68,7 @@ class PipelineBuilder {
 
   def build(): Pipeline = {
     new Pipeline(
-      imageSource.getOrElse(throw new IllegalStateException("Image source must be set before running.")),
+      imageSource.getOrElse(throw new IllegalStateException("ImageData source must be set before running.")),
       grayConverter.getOrElse(new GrayScaleConverter()),
       filters,
       asciiConverter.getOrElse(new AsciiConverter(new LinearTable())),
