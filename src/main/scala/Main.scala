@@ -1,21 +1,26 @@
 package Main
 
-import ascii.controller.AsciiArtProcessor
-import ascii.view.ConsoleUI
+import ascii.controller.Controller
+import ascii.view.ConsoleView
 
 
 @main def main(args: String*): Unit = {
-  try {
+  val ui = new ConsoleView()
 
-    val commands = ConsoleUI.start(args.toArray)
-    if (commands.isEmpty) return
+  val controller = new Controller(ui)
 
-    AsciiArtProcessor.run(commands)
-
-  } catch {
-    case e: Exception =>
-      println(s"Error: ${e.getMessage}")
-  }
+  controller.run(args.toArray)
+//  try {
+//
+//    val commands = ConsoleView.start(args.toArray)
+//    if (commands.isEmpty) return
+//
+//    Controller.run(commands)
+//
+//  } catch {
+//    case e: Exception =>
+//      println(s"Error: ${e.getMessage}")
+//  }
 }
 
 //case class Pixel(r: Int, g: Int, b: Int) {
@@ -559,7 +564,7 @@ import ascii.view.ConsoleUI
 //  }
 //}
 //
-//object ConsoleUI {
+//object ConsoleView {
 //
 //  private val parser = new CommandLineParser()
 //
