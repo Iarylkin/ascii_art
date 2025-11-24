@@ -1,6 +1,6 @@
 package ascii.model
 
-import ascii.model.convert.tables.LinearTable
+import ascii.model.convert.tables.{LinearTable, PaulBourkeSmallTable, TableRegistry}
 import ascii.model.convert.{AsciiConverter, Converter, GrayScaleConverter}
 import ascii.model.filter.ImageFilter
 import ascii.model.image.{AsciiImageData, GrayscaleImageData, RgbImageData}
@@ -41,6 +41,8 @@ class PipelineBuilder {
   private var asciiConverter: Option[Converter[GrayscaleImageData, AsciiImageData]] = None
   private var savers: Seq[Saver] = Seq.empty
 
+  private val tableRegistry = new TableRegistry()
+
   def withImageSource(src: ImageSource): PipelineBuilder = {
     imageSource = Some(src)
     this
@@ -71,7 +73,7 @@ class PipelineBuilder {
       imageSource.getOrElse(throw new IllegalStateException("ImageData source must be set before running.")),
       grayConverter.getOrElse(new GrayScaleConverter()),
       filters,
-      asciiConverter.getOrElse(new AsciiConverter(new LinearTable())),
+      asciiConverter.getOrElse(new AsciiConverter(tableRegistry.defaultTable)),
       if (savers.nonEmpty) savers else Seq(new ConsoleSaver())
     )
   }
