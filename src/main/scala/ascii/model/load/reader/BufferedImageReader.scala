@@ -10,13 +10,16 @@ abstract class BufferedImageReader(val name: String, val extensions: Set[String]
   extends ImageReader {
 
   override def read(file: File): RgbImageData = {
-    val img = ImageIO.read(file)
-    if (img == null)
-      throw new IllegalArgumentException(s"Cannot read $name image: ${file.getPath}")
-    fromBufferedImage(img, name)
+    val maybeImage = Option(ImageIO.read(file))
+
+    maybeImage match {
+      case Some(img) => fromBufferedImage(img, name)
+      case None =>
+        throw new IllegalArgumentException(s"Cannot read or decode $name image: ${file.getPath}")
+    }
   }
 
-  protected def fromBufferedImage(img: BufferedImage, format: String): RgbImageData = {
+  private def fromBufferedImage(img: BufferedImage, format: String): RgbImageData = {
     val w = img.getWidth
     val h = img.getHeight
     
