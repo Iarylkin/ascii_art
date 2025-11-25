@@ -1,13 +1,12 @@
 package ascii.model
 
-import ascii.model.convert.tables.{LinearTable, PaulBourkeSmallTable, TableRegistry}
+import ascii.model.convert.tables.TableRegistry
 import ascii.model.convert.{AsciiConverter, Converter, GrayScaleConverter}
 import ascii.model.filter.ImageFilter
 import ascii.model.image.{AsciiImageData, GrayscaleImageData, RgbImageData}
 import ascii.model.load.ImageSource
 import ascii.model.save.{ConsoleSaver, Saver}
 
-// The Process: Immutable definition of the workflow
 class Pipeline(
                 val imageSource: ImageSource,
                 val grayConverter: Converter[RgbImageData, GrayscaleImageData],
@@ -16,24 +15,18 @@ class Pipeline(
                 val savers: Seq[Saver]
               ) {
   def run(): Unit = {
-    // 1. Load
     val rgb = imageSource.load()
-
-    // 2. Convert to Gray
+    
     val gray = grayConverter.convert(rgb)
-
-    // 3. Apply Filters (Chain them sequentially)
+    
     val filtered = filters.foldLeft(gray)((currentImage, filter) => filter.apply(currentImage))
-
-    // 4. Convert to ASCII
+    
     val ascii = asciiConverter.convert(filtered)
-
-    // 5. Save/Output
+    
     savers.foreach(_.save(ascii))
   }
 }
 
-// The Builder: Mutable helper to construct the Pipeline step-by-step
 class PipelineBuilder {
   private var imageSource: Option[ImageSource] = None
   private var grayConverter: Option[Converter[RgbImageData, GrayscaleImageData]] = None
