@@ -3,14 +3,18 @@ package ascii.model.load.reader
 import ascii.model.image.{Pixel, RgbImageData}
 
 import java.awt.image.BufferedImage
-import java.io.File
+import java.io.{File, IOException}
 import javax.imageio.ImageIO
 
 abstract class BufferedImageReader(val name: String, val extensions: Set[String])
   extends ImageReader {
 
   override def read(file: File): RgbImageData = {
-    val maybeImage = Option(ImageIO.read(file))
+    val maybeImage = try {
+      Option(ImageIO.read(file))
+    } catch {
+      case _: IOException => None
+    }
 
     maybeImage match {
       case Some(img) => fromBufferedImage(img, name)
