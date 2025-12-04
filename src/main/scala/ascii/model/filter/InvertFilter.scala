@@ -4,7 +4,8 @@ import ascii.model.image.GrayscaleImageData
 
 class InvertFilter extends GrayscaleFilter {
   override def apply(image: GrayscaleImageData): GrayscaleImageData = {
-    val invertedPixels = image.pixels.map(p => 255 - p)
-    image.copy(pixels = invertedPixels)
+    val invertedPixels = image.getData.map(p => 255 - p)
+    
+    GrayscaleImageData(image.width, image.height, invertedPixels)
   }
 }

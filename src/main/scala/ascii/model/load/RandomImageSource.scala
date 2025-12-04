@@ -9,7 +9,15 @@ class RandomImageSource(seed: Option[Long] = None) extends ImageSource {
     val rng = seed.map(new Random(_)).getOrElse(new Random())
     val width = 20 + rng.nextInt(181)
     val height = 20 + rng.nextInt(181)
-    val pixels = Array.fill(width * height)(Pixel(rng.nextInt(256), rng.nextInt(256), rng.nextInt(256)))
+    
+    val pixels: Vector[Pixel] = Vector.fill(width * height) {
+      Pixel(
+        rng.nextInt(256),
+        rng.nextInt(256),
+        rng.nextInt(256)
+      )
+    }
+    
     RgbImageData(width, height, pixels, "random")
   }
 }

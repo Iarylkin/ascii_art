@@ -11,10 +11,12 @@ abstract class AbstractSaver extends Saver {
   final override def save(data: AsciiImageData): Unit = {
     open()
     try {
-      for (i <- 0 until data.content.length) {
-        writeChar(data.content.charAt(i))
-        if ((i + 1) % data.width == 0)
-          writeNewLine()
+      for (y <- 0 until data.height) {
+
+        for (x <- 0 until data.width) {
+          writeChar(data.pixel(x, y))
+        }
+        writeNewLine()
       }
     } finally {
       close()
