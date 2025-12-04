@@ -5,7 +5,9 @@ import ascii.controller.parsing.CommandLineParser
 import ascii.model.PipelineBuilder
 import ascii.view.View
 
-class Controller(view: View) {
+class Controller(
+  view: View,
+  builder: PipelineBuilder = new PipelineBuilder()) {
 
   private val parser = new CommandLineParser()
   private val commandRegistry = new CommandRegistry
@@ -18,7 +20,6 @@ class Controller(view: View) {
 
     try {
       val commands = parser.parse(args.toList)
-      val builder = new PipelineBuilder()
 
       commands.foreach { cmd =>
         commandRegistry.getHandler(cmd.name) match {
