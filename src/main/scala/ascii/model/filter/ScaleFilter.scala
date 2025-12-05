@@ -2,7 +2,18 @@ package ascii.model.filter
 
 import ascii.model.image.GrayscaleImageData
 
+/**
+ * Filters the image resolution.
+ *
+ * Note: The scale parameter represents the change in total area (pixel count),
+ * not the linear dimension change.
+ * - 4.0  => 2x width, 2x height
+ * - 0.25 => 0.5x width, 0.5x height
+ *
+ * @param scale The target area scale factor (only 1.0, 4.0, or 0.25).
+ */
 class ScaleFilter(scale: Double) extends GrayscaleFilter {
+
   override def apply(image: GrayscaleImageData): GrayscaleImageData = {
     scale match {
       case 1.0 => image
@@ -12,6 +23,9 @@ class ScaleFilter(scale: Double) extends GrayscaleFilter {
     }
   }
 
+  /**
+   * Doubles the image dimensions using Nearest Neighbor interpolation.
+   */
   private def scaleUp(image: GrayscaleImageData): GrayscaleImageData = {
     val w = image.width
     val h = image.height
@@ -20,6 +34,7 @@ class ScaleFilter(scale: Double) extends GrayscaleFilter {
 
     val newPixels = (0 until newH).flatMap { y =>
       (0 until newW).map { x =>
+        // Map target pixel back to source pixel (integer division handles the repetition)
         image.pixel(x / 2, y / 2)
       }
     }.toVector
@@ -27,6 +42,9 @@ class ScaleFilter(scale: Double) extends GrayscaleFilter {
     GrayscaleImageData(newW, newH, newPixels)
   }
 
+  /**
+   * Halves the image dimensions using Average Pooling (2x2 grid average).
+   */
   private def scaleDown(image: GrayscaleImageData): GrayscaleImageData = {
     val w = image.width
     val h = image.height
@@ -40,7 +58,8 @@ class ScaleFilter(scale: Double) extends GrayscaleFilter {
 
         var sum = 0.0
         var count = 0
-        
+
+        // Average the 2x2 block
         for (dy <- 0 until 2; dx <- 0 until 2) {
           val sx = startX + dx
           val sy = startY + dy
@@ -58,4 +77,3 @@ class ScaleFilter(scale: Double) extends GrayscaleFilter {
     GrayscaleImageData(newW, newH, newPixels)
   }
 }
-

@@ -1,6 +1,14 @@
 package ascii.view
 
+/**
+ * Console-based implementation of the user interface.
+ * Handles printing usage instructions, error messages, and success notifications.
+ */
 class ConsoleView extends View {
+
+  /**
+   * Displays the application usage manual with all available flags.
+   */
   override def showHelp(): Unit = {
     println("Usage: java -jar ascii.jar --image <path> [options]...")
     println("\nINPUT:")
@@ -19,10 +27,16 @@ class ConsoleView extends View {
     println("  --output-file <path>    Save to file")
   }
 
+  /**
+   * Prints error messages to the standard error stream (System.err).
+   */
   override def showError(msg: String): Unit = {
     System.err.println(s"ERROR: $msg")
   }
 
+  /**
+   * Notifies the user of successful execution.
+   */
   override def showSuccess(): Unit = {
     println("Processing finished successfully.")
   }

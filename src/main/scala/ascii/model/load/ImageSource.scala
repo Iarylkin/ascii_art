@@ -1,10 +1,17 @@
 package ascii.model.load
 
-import ascii.model.image.{Pixel, RgbImageData}
+import ascii.model.image.RgbImageData
 
-import java.io.File
-import scala.util.Random
-
+/**
+ * Common interface for loading or generating RGB images.
+ */
 trait ImageSource {
-  def load() : RgbImageData
+
+  /**
+   * Loads an image into memory.
+   *
+   * @return A valid RgbImageData object.
+   * @throws Exception if loading fails (e.g., file not found).
+   */
+  def load(): RgbImageData
 }
